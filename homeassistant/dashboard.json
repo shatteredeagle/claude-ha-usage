@@ -1,0 +1,44 @@
+{
+  "views": [
+    {
+      "title": "Usage",
+      "path": "usage",
+      "type": "sections",
+      "max_columns": 3,
+      "sections": [
+        {
+          "type": "grid",
+          "cards": [
+            {"type": "heading", "heading": "Now", "heading_style": "title", "icon": "mdi:gauge"},
+            {"type": "gauge", "entity": "sensor.claude_5h_used", "name": "5-hour window", "min": 0, "max": 100, "needle": true, "severity": {"green": 0, "yellow": 60, "red": 85}, "grid_options": {"columns": 6}},
+            {"type": "gauge", "entity": "sensor.claude_7d_used", "name": "7-day window", "min": 0, "max": 100, "needle": true, "severity": {"green": 0, "yellow": 60, "red": 85}, "grid_options": {"columns": 6}},
+            {"type": "gauge", "entity": "sensor.claude_context_used", "name": "Current context", "min": 0, "max": 100, "needle": true, "severity": {"green": 0, "yellow": 60, "red": 85}, "grid_options": {"columns": 12}}
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {"type": "heading", "heading": "Runway (avg pace this window)", "heading_style": "title", "icon": "mdi:run-fast"},
+            {"type": "tile", "entity": "sensor.claude_5h_projected", "name": "5h: projected at reset", "icon": "mdi:chart-line"},
+            {"type": "tile", "entity": "sensor.claude_5h_runway", "name": "5h: hours until 100%"},
+            {"type": "tile", "entity": "sensor.claude_5h_resets", "name": "5h: resets"},
+            {"type": "tile", "entity": "sensor.claude_7d_projected", "name": "7d: projected at reset", "icon": "mdi:chart-line"},
+            {"type": "tile", "entity": "sensor.claude_7d_runway", "name": "7d: hours until 100%"},
+            {"type": "tile", "entity": "sensor.claude_7d_resets", "name": "7d: resets"},
+            {"type": "tile", "entity": "sensor.claude_last_report", "name": "Last report from Claude Code"}
+          ]
+        },
+        {
+          "type": "grid",
+          "column_span": 3,
+          "cards": [
+            {"type": "heading", "heading": "Trends", "heading_style": "title", "icon": "mdi:chart-timeline-variant"},
+            {"type": "history-graph", "title": "5-hour window + context (24h)", "hours_to_show": 24, "entities": [{"entity": "sensor.claude_5h_used"}, {"entity": "sensor.claude_context_used"}], "grid_options": {"columns": "full", "rows": 5}},
+            {"type": "history-graph", "title": "7-day window (7 days)", "hours_to_show": 168, "entities": [{"entity": "sensor.claude_7d_used"}], "grid_options": {"columns": "full", "rows": 5}},
+            {"type": "history-graph", "title": "Projected at reset (3 days)", "hours_to_show": 72, "entities": [{"entity": "sensor.claude_5h_projected"}, {"entity": "sensor.claude_7d_projected"}], "grid_options": {"columns": "full", "rows": 5}}
+          ]
+        }
+      ]
+    }
+  ]
+}

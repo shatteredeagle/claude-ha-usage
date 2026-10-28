@@ -1,0 +1,89 @@
+# Claude Code usage sensors. Goes in <config>/packages/claude_usage.yaml.
+# Needs secrets.yaml: claude_usage_webhook: <the id install.sh printed>
+template:
+  # Raw values, pushed by the webhook. A missing value keeps the previous state.
+  - triggers:
+      - trigger: webhook
+        webhook_id: !secret claude_usage_webhook
+        local_only: true
+    sensor:
+      - name: "Claude 5h Reported"
+        unique_id: claude_5h_reported
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ trigger.json.five_pct if trigger.json.five_pct is number else this.state }}"
+      - name: "Claude 5h Resets"
+        unique_id: claude_5h_resets
+        device_class: timestamp
+        state: "{{ as_datetime(trigger.json.five_resets).isoformat() if trigger.json.five_resets is number else this.state }}"
+      - name: "Claude 7d Reported"
+        unique_id: claude_7d_reported
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ trigger.json.seven_pct if trigger.json.seven_pct is number else this.state }}"
+      - name: "Claude 7d Resets"
+        unique_id: claude_7d_resets
+        device_class: timestamp
+        state: "{{ as_datetime(trigger.json.seven_resets).isoformat() if trigger.json.seven_resets is number else this.state }}"
+      - name: "Claude Context Used"
+        unique_id: claude_context_used
+        unit_of_measurement: "%"
+        state_class: measurement
+        state: "{{ trigger.json.ctx if trigger.json.ctx is number else this.state }}"
+        attributes:
+          host: "{{ trigger.json.host }}"
+          model: "{{ trigger.json.model }}"
+          session: "{{ trigger.json.session }}"
+      - name: "Claude Last Report"
+        unique_id: claude_last_report
+        device_class: timestamp
+        state: "{{ now().isoformat() }}"
+  # Derived values. "Used" drops to 0 once a window's reset time has passed.
+  # Runway and projection assume the average pace since the window started.
+  - sensor:
+      - name: "Claude 5h Used"
+        unique_id: claude_5h_used
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:timer-sand
+        state: >-
+          {{ states('sensor.claude_5h_reported') | float(0) if as_timestamp(states('sensor.claude_5h_resets'), 0) > now().timestamp() else 0 }}
+      - name: "Claude 7d Used"
+        unique_id: claude_7d_used
+        unit_of_measurement: "%"
+        state_class: measurement
+        icon: mdi:calendar-week
+        state: >-
+          {{ states('sensor.claude_7d_reported') | float(0) if as_timestamp(states('sensor.claude_7d_resets'), 0) > now().timestamp() else 0 }}
+      - name: "Claude 5h Runway"
+        unique_id: claude_5h_runway
+        unit_of_measurement: h
+        icon: mdi:run-fast
+        state: >-
+          {% set used = states('sensor.claude_5h_used') | float(0) %}
+          {% set el = (now().timestamp() - (as_timestamp(states('sensor.claude_5h_resets'), 0) - 5*3600)) / 3600 %}
+          {{ ((100 - used) / (used / el)) | round(1) if used > 0 and el > 0.1 else 'unknown' }}
+      - name: "Claude 5h Projected"
+        unique_id: claude_5h_projected
+        unit_of_measurement: "%"
+        icon: mdi:chart-line
+        state: >-
+          {% set used = states('sensor.claude_5h_used') | float(0) %}
+          {% set el = (now().timestamp() - (as_timestamp(states('sensor.claude_5h_resets'), 0) - 5*3600)) / 3600 %}
+          {{ (used / el * 5) | round(0) if used > 0 and el > 0.1 else 'unknown' }}
+      - name: "Claude 7d Runway"
+        unique_id: claude_7d_runway
+        unit_of_measurement: h
+        icon: mdi:run-fast
+        state: >-
+          {% set used = states('sensor.claude_7d_used') | float(0) %}
+          {% set el = (now().timestamp() - (as_timestamp(states('sensor.claude_7d_resets'), 0) - 168*3600)) / 3600 %}
+          {{ ((100 - used) / (used / el)) | round(1) if used > 0 and el > 0.5 else 'unknown' }}
+      - name: "Claude 7d Projected"
+        unique_id: claude_7d_projected
+        unit_of_measurement: "%"
+        icon: mdi:chart-line
+        state: >-
+          {% set used = states('sensor.claude_7d_used') | float(0) %}
+          {% set el = (now().timestamp() - (as_timestamp(states('sensor.claude_7d_resets'), 0) - 168*3600)) / 3600 %}
+          {{ (used / el * 168) | round(0) if used > 0 and el > 0.5 else 'unknown' }}
