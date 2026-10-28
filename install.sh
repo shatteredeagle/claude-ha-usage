@@ -47,14 +47,19 @@ esac
 case "$url$hook" in
   *[\"\\[:space:]]*) echo "URL and webhook id must not contain quotes, backslashes or spaces" >&2; exit 2 ;;
 esac
+if [ -n "$hook" ] && ! [[ $hook =~ ^[A-Za-z0-9][A-Za-z0-9_-]*$ ]]; then
+  echo "Webhook id may only contain letters, digits, - and _ (and must not start with -)" >&2; exit 2
+fi
 [ -n "$hook" ] || hook="claude-usage-$(head -c 16 /dev/urandom | od -An -tx1 | tr -d ' \n')"
+
+[ -f "$settings" ] || { mkdir -p "$HOME/.claude"; echo '{}' > "$settings"; }
+jq -e 'type == "object"' "$settings" >/dev/null 2>&1 || { echo "$settings is not a valid JSON object; fix it and re-run." >&2; exit 1; }
 
 mkdir -p "$cfgdir" "$HOME/.claude"
 ( umask 077; printf 'HA_URL=%q\nWEBHOOK_ID=%q\n' "$url" "$hook" > "$cfg" )
+chmod 600 "$cfg"
 install -m 755 "$here/statusline-ha.sh" "$target"
 
-[ -f "$settings" ] || echo '{}' > "$settings"
-jq empty "$settings" 2>/dev/null || { echo "$settings is not valid JSON; fix it and re-run." >&2; exit 1; }
 current=$(jq -r '.statusLine.command // empty' "$settings")
 if [ "$current" = "$ours" ]; then
   echo "statusLine already set in $settings"
@@ -66,7 +71,7 @@ else
   bak="$settings.bak-claude-ha"
   [ -e "$bak" ] && bak="$bak.$(date +%s)"
   cp "$settings" "$bak"
-  jq --arg c "$ours" '.statusLine = {type: "command", command: $c}' "$bak" > "$settings.tmp" && mv "$settings.tmp" "$settings"
+  jq --arg c "$ours" '.statusLine = {type: "command", command: $c}' "$bak" > "$settings.tmp" && cat "$settings.tmp" > "$settings" && rm -f "$settings.tmp"
   echo "statusLine set in $settings (backup: $bak)"
 fi
 

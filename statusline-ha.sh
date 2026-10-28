@@ -35,21 +35,22 @@ printf '%s' "$data" > "$payload.$$" && mv "$payload.$$" "$payload"
 
 now=$(date +%s); last=$(cat "$stamp" 2>/dev/null)
 case $last in ''|*[!0-9]*) last=0 ;; esac
+last=$((10#$last))
 (( last > now )) && last=0
 
 # The URL carries the webhook secret, so it goes to curl on stdin (-K -), not on the command line.
 send() {
-  date +%s > "$stamp"
   printf 'url = "%s/api/webhook/%s"\n' "${HA_URL%/}" "$WEBHOOK_ID" |
     curl -s -m 5 -X POST -H 'Content-Type: application/json' --data-binary @"$payload" -K - >/dev/null 2>&1
 }
 
 if (( now - last >= 60 )); then
+  echo "$now" > "$stamp"
   send </dev/null >/dev/null 2>&1 &
 else
   # Throttled: schedule one trailing send of the latest payload. A killed sender leaves a stale lock; clear it.
   [ -n "$(find "$lock" -maxdepth 0 -mmin +2 2>/dev/null)" ] && rmdir "$lock" 2>/dev/null
   if mkdir "$lock" 2>/dev/null; then
-    ( sleep $((60 - (now - last))); send; rmdir "$lock" ) </dev/null >/dev/null 2>&1 &
+    ( sleep $((60 - (now - last))); date +%s > "$stamp"; rmdir "$lock"; send ) </dev/null >/dev/null 2>&1 &
   fi
 fi

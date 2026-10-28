@@ -45,7 +45,7 @@ To report from more machines, clone the repo there and run `./install.sh --url <
 ## How it behaves
 
 - **No tokens used.** The statusline command is a local process outside the model; its output never enters the conversation.
-- **Not live.** Numbers arrive only while a Claude Code session is running, and the limit percentages refresh when a session gets an API response. Posts are limited to one a minute; if updates arrive faster, the newest values are sent when the minute is up, so the last state of a burst is never lost. `sensor.claude_last_report` tells you how stale the data is.
+- **Not live.** Numbers arrive only while a Claude Code session is running, and the limit percentages refresh when a session gets an API response. Posts are limited to one a minute; if updates arrive faster, the newest values are sent when the minute is up, so the last state of a burst is not lost (unless the sending process is killed, for example by closing the terminal). `sensor.claude_last_report` tells you how stale the data is.
 - **Limits are account-wide, context is per session.** With several sessions open, the context sensor shows whichever reported last.
 - **Runway is an average, not recent burn.** It is `(100 - used) / (used / hours since the window started)`, never below 0. A long idle stretch early in a window makes it optimistic. It can be longer than the time left in the window; the `hits_limit_before_reset` attribute on the runway sensors says whether you would actually hit 100% before the reset.
 - The webhook is `local_only`, so HA only accepts it from your LAN. The webhook id is the only secret: it is kept in a mode-600 config file and passed to `curl` on stdin, not on the command line. Use `https://` if your HA is reachable that way.
