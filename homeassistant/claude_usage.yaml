@@ -1,7 +1,7 @@
 # Claude Code usage sensors. Goes in <config>/packages/claude_usage.yaml.
 # Needs secrets.yaml: claude_usage_webhook: <the id install.sh printed>
 template:
-  # Raw values, pushed by the webhook. A missing value keeps the previous state.
+  # Raw values, pushed by the webhook. A missing value (or a request without a JSON body) keeps the previous state.
   - triggers:
       - trigger: webhook
         webhook_id: !secret claude_usage_webhook
@@ -11,35 +11,46 @@ template:
         unique_id: claude_5h_reported
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ trigger.json.five_pct if trigger.json.five_pct is number else this.state }}"
+        state: >-
+          {% set j = trigger.json | default({}) %}
+          {{ j.five_pct if j.five_pct is number else this.state }}
       - name: "Claude 5h Resets"
         unique_id: claude_5h_resets
         device_class: timestamp
-        state: "{{ as_datetime(trigger.json.five_resets).isoformat() if trigger.json.five_resets is number else this.state }}"
+        state: >-
+          {% set j = trigger.json | default({}) %}
+          {{ as_datetime(j.five_resets).isoformat() if j.five_resets is number else this.state }}
       - name: "Claude 7d Reported"
         unique_id: claude_7d_reported
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ trigger.json.seven_pct if trigger.json.seven_pct is number else this.state }}"
+        state: >-
+          {% set j = trigger.json | default({}) %}
+          {{ j.seven_pct if j.seven_pct is number else this.state }}
       - name: "Claude 7d Resets"
         unique_id: claude_7d_resets
         device_class: timestamp
-        state: "{{ as_datetime(trigger.json.seven_resets).isoformat() if trigger.json.seven_resets is number else this.state }}"
+        state: >-
+          {% set j = trigger.json | default({}) %}
+          {{ as_datetime(j.seven_resets).isoformat() if j.seven_resets is number else this.state }}
       - name: "Claude Context Used"
         unique_id: claude_context_used
         unit_of_measurement: "%"
         state_class: measurement
-        state: "{{ trigger.json.ctx if trigger.json.ctx is number else this.state }}"
+        state: >-
+          {% set j = trigger.json | default({}) %}
+          {{ j.ctx if j.ctx is number else this.state }}
         attributes:
-          host: "{{ trigger.json.host }}"
-          model: "{{ trigger.json.model }}"
-          session: "{{ trigger.json.session }}"
+          host: "{{ (trigger.json | default({})).host | default(none) }}"
+          model: "{{ (trigger.json | default({})).model | default(none) }}"
+          session: "{{ (trigger.json | default({})).session | default(none) }}"
       - name: "Claude Last Report"
         unique_id: claude_last_report
         device_class: timestamp
         state: "{{ now().isoformat() }}"
   # Derived values. "Used" drops to 0 once a window's reset time has passed.
-  # Runway and projection assume the average pace since the window started.
+  # Runway and projection assume the average pace since the window started. Runway is hours until 100% at that
+  # pace (never negative); the hits_limit_before_reset attribute says whether that happens before the window resets.
   - sensor:
       - name: "Claude 5h Used"
         unique_id: claude_5h_used
@@ -62,7 +73,13 @@ template:
         state: >-
           {% set used = states('sensor.claude_5h_used') | float(0) %}
           {% set el = (now().timestamp() - (as_timestamp(states('sensor.claude_5h_resets'), 0) - 5*3600)) / 3600 %}
-          {{ ((100 - used) / (used / el)) | round(1) if used > 0 and el > 0.1 else 'unknown' }}
+          {{ ([(100 - used) / (used / el), 0] | max) | round(1) if used > 0 and el > 0.1 else 'unknown' }}
+        attributes:
+          hits_limit_before_reset: >-
+            {% set used = states('sensor.claude_5h_used') | float(0) %}
+            {% set reset = as_timestamp(states('sensor.claude_5h_resets'), 0) %}
+            {% set el = (now().timestamp() - (reset - 5*3600)) / 3600 %}
+            {{ used > 0 and el > 0.1 and (100 - used) / (used / el) < (reset - now().timestamp()) / 3600 }}
       - name: "Claude 5h Projected"
         unique_id: claude_5h_projected
         unit_of_measurement: "%"
@@ -78,7 +95,13 @@ template:
         state: >-
           {% set used = states('sensor.claude_7d_used') | float(0) %}
           {% set el = (now().timestamp() - (as_timestamp(states('sensor.claude_7d_resets'), 0) - 168*3600)) / 3600 %}
-          {{ ((100 - used) / (used / el)) | round(1) if used > 0 and el > 0.5 else 'unknown' }}
+          {{ ([(100 - used) / (used / el), 0] | max) | round(1) if used > 0 and el > 0.5 else 'unknown' }}
+        attributes:
+          hits_limit_before_reset: >-
+            {% set used = states('sensor.claude_7d_used') | float(0) %}
+            {% set reset = as_timestamp(states('sensor.claude_7d_resets'), 0) %}
+            {% set el = (now().timestamp() - (reset - 168*3600)) / 3600 %}
+            {{ used > 0 and el > 0.5 and (100 - used) / (used / el) < (reset - now().timestamp()) / 3600 }}
       - name: "Claude 7d Projected"
         unique_id: claude_7d_projected
         unit_of_measurement: "%"

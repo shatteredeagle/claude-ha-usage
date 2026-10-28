@@ -36,23 +36,24 @@ The installer writes `~/.config/claude-ha/config` (URL and a generated webhook i
 It then prints the Home Assistant steps:
 
 1. Add `claude_usage_webhook: <id>` to `secrets.yaml`.
-2. Enable packages in `configuration.yaml` if you haven't (`homeassistant: packages: !include_dir_named packages`).
-3. Copy `homeassistant/claude_usage.yaml` to `packages/claude_usage.yaml` and restart HA.
+2. Enable packages in `configuration.yaml` if you haven't: `packages: !include_dir_named packages`. If you already have a top-level `homeassistant:` block, add it inside that block; a second `homeassistant:` key would silently replace the first.
+3. Create the `packages/` folder next to `configuration.yaml` if needed, copy `homeassistant/claude_usage.yaml` into it and restart HA.
 4. Create a dashboard and paste `homeassistant/dashboard.json` into its raw configuration editor.
 
-To report from more machines, copy `~/.config/claude-ha/config` to them (or run `install.sh --url ... --webhook-id <same id>`).
+To report from more machines, clone the repo there and run `./install.sh --url <same url> --webhook-id <same id>` (or copy `~/.config/claude-ha/config` over first and run `./install.sh`). The config alone does nothing: the machine also needs the script and the `statusLine` setting, which the installer adds.
 
 ## How it behaves
 
 - **No tokens used.** The statusline command is a local process outside the model; its output never enters the conversation.
-- **Not live.** Numbers arrive only while a Claude Code session is running, at most once a minute, and the limit percentages refresh when a session gets an API response. `sensor.claude_last_report` tells you how stale they are.
+- **Not live.** Numbers arrive only while a Claude Code session is running, and the limit percentages refresh when a session gets an API response. Posts are limited to one a minute; if updates arrive faster, the newest values are sent when the minute is up, so the last state of a burst is never lost. `sensor.claude_last_report` tells you how stale the data is.
 - **Limits are account-wide, context is per session.** With several sessions open, the context sensor shows whichever reported last.
-- **Runway is an average, not recent burn.** It is `(100 - used) / (used / hours since the window started)`. A long idle stretch early in a window makes it optimistic.
-- The webhook is `local_only`, so HA only accepts it from your LAN.
+- **Runway is an average, not recent burn.** It is `(100 - used) / (used / hours since the window started)`, never below 0. A long idle stretch early in a window makes it optimistic. It can be longer than the time left in the window; the `hits_limit_before_reset` attribute on the runway sensors says whether you would actually hit 100% before the reset.
+- The webhook is `local_only`, so HA only accepts it from your LAN. The webhook id is the only secret: it is kept in a mode-600 config file and passed to `curl` on stdin, not on the command line. Use `https://` if your HA is reachable that way.
+- Small state files (last-sent time, latest payload) live in a private per-user folder under `$XDG_RUNTIME_DIR`, `$TMPDIR` or `~/.cache`.
 
 ## Uninstall
 
-Remove `statusLine` from `~/.claude/settings.json` (a backup of the previous file is at `settings.json.bak-claude-ha`), delete `~/.claude/statusline-ha.sh` and `~/.config/claude-ha/`, and remove the HA package and dashboard.
+Remove `statusLine` from `~/.claude/settings.json` (or restore the first backup, `settings.json.bak-claude-ha`, if you had a statusline before; the installer never overwrites it), delete `~/.claude/statusline-ha.sh` and `~/.config/claude-ha/`, and remove the HA package and dashboard.
 
 ## License
 

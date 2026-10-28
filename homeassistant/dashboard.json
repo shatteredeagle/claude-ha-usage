@@ -20,10 +20,10 @@
           "cards": [
             {"type": "heading", "heading": "Runway (avg pace this window)", "heading_style": "title", "icon": "mdi:run-fast"},
             {"type": "tile", "entity": "sensor.claude_5h_projected", "name": "5h: projected at reset", "icon": "mdi:chart-line"},
-            {"type": "tile", "entity": "sensor.claude_5h_runway", "name": "5h: hours until 100%"},
+            {"type": "tile", "entity": "sensor.claude_5h_runway", "name": "5h: hours to 100% at this pace"},
             {"type": "tile", "entity": "sensor.claude_5h_resets", "name": "5h: resets"},
             {"type": "tile", "entity": "sensor.claude_7d_projected", "name": "7d: projected at reset", "icon": "mdi:chart-line"},
-            {"type": "tile", "entity": "sensor.claude_7d_runway", "name": "7d: hours until 100%"},
+            {"type": "tile", "entity": "sensor.claude_7d_runway", "name": "7d: hours to 100% at this pace"},
             {"type": "tile", "entity": "sensor.claude_7d_resets", "name": "7d: resets"},
             {"type": "tile", "entity": "sensor.claude_last_report", "name": "Last report from Claude Code"}
           ]
