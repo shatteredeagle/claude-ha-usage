@@ -20,6 +20,7 @@ Claude Code passes a JSON blob to its `statusLine` command on every update. That
 - Claude Code with a Claude.ai subscription (Pro/Max). `rate_limits` is only present for subscribers, and only after the first API response of a session.
 - `jq` and `curl` on each machine that runs Claude Code. Linux, macOS and WSL are fine.
 - Home Assistant 2024.10 or newer (the `triggers:` / `trigger: webhook` template syntax), reachable from that machine.
+- For the dashboard: the [Mushroom](https://github.com/piitaya/lovelace-mushroom) and [mini-graph-card](https://github.com/kalkih/mini-graph-card) cards from HACS. The sensors and package work without them.
 
 ## Install
 

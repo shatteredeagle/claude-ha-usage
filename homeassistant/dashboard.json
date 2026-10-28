@@ -5,37 +5,309 @@
       "path": "usage",
       "type": "sections",
       "max_columns": 3,
+      "header": {
+        "layout": "start",
+        "card": {
+          "type": "markdown",
+          "text_only": true,
+          "content": "# Claude usage\n{% set p5 = states('sensor.claude_5h_projected')|float(0) %}{% set p7 = states('sensor.claude_7d_projected')|float(0) %}{% if p5 >= 100 or p7 >= 100 %}**Heads up:** at this pace you will {% if p5 >= 100 %}hit the 5-hour limit before it resets{% else %}hit the weekly limit before it resets{% endif %}.{% elif p5 >= 80 or p7 >= 80 %}Running warm: projected {{ p5|int }}% (5h) and {{ p7|int }}% (7d) at reset.{% else %}All clear: on pace for {{ p5|int }}% (5h) and {{ p7|int }}% (7d) at reset.{% endif %}\n<sub>Last report {{ relative_time(states.sensor.claude_last_report.last_changed) }} ago from {{ state_attr('sensor.claude_context_used','host') }}</sub>"
+        }
+      },
       "sections": [
         {
           "type": "grid",
           "cards": [
-            {"type": "heading", "heading": "Now", "heading_style": "title", "icon": "mdi:gauge"},
-            {"type": "gauge", "entity": "sensor.claude_5h_used", "name": "5-hour window", "min": 0, "max": 100, "needle": true, "severity": {"green": 0, "yellow": 60, "red": 85}, "grid_options": {"columns": 6}},
-            {"type": "gauge", "entity": "sensor.claude_7d_used", "name": "7-day window", "min": 0, "max": 100, "needle": true, "severity": {"green": 0, "yellow": 60, "red": 85}, "grid_options": {"columns": 6}},
-            {"type": "gauge", "entity": "sensor.claude_context_used", "name": "Current context", "min": 0, "max": 100, "needle": true, "severity": {"green": 0, "yellow": 60, "red": 85}, "grid_options": {"columns": 12}}
+            {
+              "type": "heading",
+              "heading": "5-hour window",
+              "heading_style": "title",
+              "icon": "mdi:timer-sand"
+            },
+            {
+              "type": "gauge",
+              "entity": "sensor.claude_5h_used",
+              "name": "Used",
+              "min": 0,
+              "max": 100,
+              "severity": {
+                "green": 0,
+                "yellow": 60,
+                "red": 85
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 3
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_5h_projected",
+              "primary": "{{ states('sensor.claude_5h_projected')|int }}% at reset",
+              "secondary": "Projected",
+              "icon": "mdi:chart-line",
+              "icon_color": "{{ 'red' if states('sensor.claude_5h_projected')|float(0) >= 100 else 'orange' if states('sensor.claude_5h_projected')|float(0) >= 80 else 'green' }}",
+              "layout": "vertical",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 2
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_5h_runway",
+              "primary": "{% if state_attr('sensor.claude_5h_runway','hits_limit_before_reset') %}{{ states('sensor.claude_5h_runway') }} h left{% else %}Clear to reset{% endif %}",
+              "secondary": "Runway",
+              "icon": "mdi:run-fast",
+              "icon_color": "{{ 'red' if state_attr('sensor.claude_5h_runway','hits_limit_before_reset') else 'green' }}",
+              "layout": "vertical",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 2
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_5h_resets",
+              "primary": "{% set s = (as_datetime(states('sensor.claude_5h_resets')) - now()).total_seconds() %}{% if s > 0 %}{{ (s // 3600)|int }}h {{ ((s % 3600) // 60)|int }}m{% else %}Reset{% endif %}",
+              "secondary": "Resets in",
+              "icon": "mdi:restore",
+              "icon_color": "blue",
+              "layout": "vertical",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 12,
+                "rows": 2
+              }
+            }
           ]
         },
         {
           "type": "grid",
           "cards": [
-            {"type": "heading", "heading": "Runway (avg pace this window)", "heading_style": "title", "icon": "mdi:run-fast"},
-            {"type": "tile", "entity": "sensor.claude_5h_projected", "name": "5h: projected at reset", "icon": "mdi:chart-line"},
-            {"type": "tile", "entity": "sensor.claude_5h_runway", "name": "5h: hours to 100% at this pace"},
-            {"type": "tile", "entity": "sensor.claude_5h_resets", "name": "5h: resets"},
-            {"type": "tile", "entity": "sensor.claude_7d_projected", "name": "7d: projected at reset", "icon": "mdi:chart-line"},
-            {"type": "tile", "entity": "sensor.claude_7d_runway", "name": "7d: hours to 100% at this pace"},
-            {"type": "tile", "entity": "sensor.claude_7d_resets", "name": "7d: resets"},
-            {"type": "tile", "entity": "sensor.claude_last_report", "name": "Last report from Claude Code"}
+            {
+              "type": "heading",
+              "heading": "7-day window",
+              "heading_style": "title",
+              "icon": "mdi:calendar-week"
+            },
+            {
+              "type": "gauge",
+              "entity": "sensor.claude_7d_used",
+              "name": "Used",
+              "min": 0,
+              "max": 100,
+              "severity": {
+                "green": 0,
+                "yellow": 60,
+                "red": 85
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 3
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_7d_projected",
+              "primary": "{{ states('sensor.claude_7d_projected')|int }}% at reset",
+              "secondary": "Projected",
+              "icon": "mdi:chart-line",
+              "icon_color": "{{ 'red' if states('sensor.claude_7d_projected')|float(0) >= 100 else 'orange' if states('sensor.claude_7d_projected')|float(0) >= 80 else 'green' }}",
+              "layout": "vertical",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 2
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_7d_runway",
+              "primary": "{% if state_attr('sensor.claude_7d_runway','hits_limit_before_reset') %}{{ (states('sensor.claude_7d_runway')|float(0) / 24)|round(1) }} d left{% else %}Clear to reset{% endif %}",
+              "secondary": "Runway",
+              "icon": "mdi:run-fast",
+              "icon_color": "{{ 'red' if state_attr('sensor.claude_7d_runway','hits_limit_before_reset') else 'green' }}",
+              "layout": "vertical",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 6,
+                "rows": 2
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_7d_resets",
+              "primary": "{% set s = (as_datetime(states('sensor.claude_7d_resets')) - now()).total_seconds() %}{% if s > 0 %}{{ (s // 86400)|int }}d {{ ((s % 86400) // 3600)|int }}h{% else %}Reset{% endif %}",
+              "secondary": "Resets in",
+              "icon": "mdi:restore",
+              "icon_color": "blue",
+              "layout": "vertical",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 12,
+                "rows": 2
+              }
+            }
+          ]
+        },
+        {
+          "type": "grid",
+          "cards": [
+            {
+              "type": "heading",
+              "heading": "This session",
+              "heading_style": "title",
+              "icon": "mdi:chat-processing-outline"
+            },
+            {
+              "type": "gauge",
+              "entity": "sensor.claude_context_used",
+              "name": "Context window",
+              "min": 0,
+              "max": 100,
+              "severity": {
+                "green": 0,
+                "yellow": 60,
+                "red": 85
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 3
+              }
+            },
+            {
+              "type": "custom:mushroom-template-card",
+              "entity": "sensor.claude_context_used",
+              "primary": "{{ state_attr('sensor.claude_context_used','model') }}",
+              "secondary": "on {{ state_attr('sensor.claude_context_used','host') }}",
+              "icon": "mdi:robot-happy-outline",
+              "icon_color": "purple",
+              "fill_container": true,
+              "grid_options": {
+                "columns": 12,
+                "rows": 1
+              }
+            }
           ]
         },
         {
           "type": "grid",
           "column_span": 3,
           "cards": [
-            {"type": "heading", "heading": "Trends", "heading_style": "title", "icon": "mdi:chart-timeline-variant"},
-            {"type": "history-graph", "title": "5-hour window + context (24h)", "hours_to_show": 24, "entities": [{"entity": "sensor.claude_5h_used"}, {"entity": "sensor.claude_context_used"}], "grid_options": {"columns": "full", "rows": 5}},
-            {"type": "history-graph", "title": "7-day window (7 days)", "hours_to_show": 168, "entities": [{"entity": "sensor.claude_7d_used"}], "grid_options": {"columns": "full", "rows": 5}},
-            {"type": "history-graph", "title": "Projected at reset (3 days)", "hours_to_show": 72, "entities": [{"entity": "sensor.claude_5h_projected"}, {"entity": "sensor.claude_7d_projected"}], "grid_options": {"columns": "full", "rows": 5}}
+            {
+              "type": "heading",
+              "heading": "Trends",
+              "heading_style": "title",
+              "icon": "mdi:chart-timeline-variant"
+            },
+            {
+              "type": "custom:mini-graph-card",
+              "name": "5-hour window · last 24h",
+              "entities": [
+                {
+                  "entity": "sensor.claude_5h_used"
+                }
+              ],
+              "hours_to_show": 24,
+              "points_per_hour": 4,
+              "line_width": 3,
+              "lower_bound": 0,
+              "upper_bound": 100,
+              "color_thresholds": [
+                {
+                  "value": 0,
+                  "color": "#43a047"
+                },
+                {
+                  "value": 60,
+                  "color": "#ffa600"
+                },
+                {
+                  "value": 85,
+                  "color": "#db4437"
+                }
+              ],
+              "show": {
+                "fill": "fade",
+                "extrema": true,
+                "points": false,
+                "labels": "hover",
+                "legend": false
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 4
+              }
+            },
+            {
+              "type": "custom:mini-graph-card",
+              "name": "7-day window · last 7 days",
+              "entities": [
+                {
+                  "entity": "sensor.claude_7d_used"
+                }
+              ],
+              "hours_to_show": 168,
+              "points_per_hour": 1,
+              "line_width": 3,
+              "lower_bound": 0,
+              "upper_bound": 100,
+              "color_thresholds": [
+                {
+                  "value": 0,
+                  "color": "#43a047"
+                },
+                {
+                  "value": 60,
+                  "color": "#ffa600"
+                },
+                {
+                  "value": 85,
+                  "color": "#db4437"
+                }
+              ],
+              "show": {
+                "fill": "fade",
+                "extrema": true,
+                "points": false,
+                "labels": "hover",
+                "legend": false
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 4
+              }
+            },
+            {
+              "type": "custom:mini-graph-card",
+              "name": "Projected at reset · last 3 days",
+              "entities": [
+                {
+                  "entity": "sensor.claude_5h_projected",
+                  "name": "5h"
+                },
+                {
+                  "entity": "sensor.claude_7d_projected",
+                  "name": "7d"
+                }
+              ],
+              "hours_to_show": 72,
+              "points_per_hour": 1,
+              "line_width": 2,
+              "lower_bound": 0,
+              "show": {
+                "fill": "fade",
+                "points": false,
+                "labels": "hover",
+                "legend": true
+              },
+              "grid_options": {
+                "columns": 12,
+                "rows": 4
+              }
+            }
           ]
         }
       ]
